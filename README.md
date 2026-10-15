@@ -78,8 +78,10 @@ It installs the latest release. A zip from the
 built with `build`, installs the same way. The filter appears as
 **Butterworth** under *1. Preprocessing* on the Tools tab.
 
-It needs Alakazam V0.4.5.1 or later, and MATLAB's Signal Processing Toolbox
-(`butter`, `filtfilt`, `freqz`).
+It needs Alakazam V0.4.5.2 or later, whose dialogs draw a filter's frequency
+response (`DialogFields.FrequencyResponse`, the plot Alakazam's own Filter
+shows), and MATLAB's Signal Processing Toolbox (`butter`, `filtfilt`,
+`freqz`). Version 0.1.0 runs on V0.4.5.1.
 
 ## Building and testing
 

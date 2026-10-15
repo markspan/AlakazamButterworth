@@ -114,53 +114,35 @@ function options = askForOptions(input, labels)
         'separator', 'Channels:', ...
         {'Channels'; 'Channels'}, DialogFields.Channels(input, d('Channels', labels), ...
             'Required', true), ...
-        {'Amplitude response, forward and backward'; 'Response'}, DialogFields.Plot( ...
-            @(ax, v) drawResponse(ax, Butterworth.fromPreset(v, presets), srate)));
+        {'Amplitude response, forward and backward'; 'Response'}, DialogFields.FrequencyResponse( ...
+            @(v) response(Butterworth.fromPreset(v, presets), srate)));
     if ~isempty(options)
         options = Butterworth.fromPreset(options, presets);
     end
 end
 
-function drawResponse(ax, v, srate)
-%DRAWRESPONSE  The amplitude response of the filter as it will be applied
-%   (forward and backward, so the gain of one pass squared), in dB, with
-%   the half-amplitude level dotted and each cutoff marked.
-    try
-        highpass = onOrOff(v.Highpass, v.HighpassHz);
-        lowpass = onOrOff(v.Lowpass, v.LowpassHz);
-        order = rolloffOrder(v.Rolloff);
-        f = logspace(log10(0.01), log10(0.999 * srate / 2), 600);
-        gain = ones(size(f));
-        if lowpass > 0
-            [b, a] = Butterworth.design('low', lowpass, order, srate);
-            gain = gain .* abs(freqz(b, a, f, srate)) .^ 2;
-        end
-        if highpass > 0
-            [b, a] = Butterworth.design('high', highpass, order, srate);
-            gain = gain .* abs(freqz(b, a, f, srate)) .^ 2;
-        end
-        if highpass > 0 && lowpass > 0 && lowpass <= highpass
-            error('ButterworthFilter:bandstop', 'The low-pass must lie above the high-pass.');
-        end
-    catch err
-        cla(ax);
-        title(ax, err.message, 'FontWeight', 'normal', 'FontSize', 9);
-        return;
+function [f, gain, cutoffs] = response(v, srate)
+%RESPONSE  The amplitude response of the filter as it will be applied
+%   (forward and backward, so the gain of one pass squared) and its
+%   cutoffs, for Alakazam's DialogFields.FrequencyResponse to draw. A
+%   setting the filter would refuse is refused here, and the plot shows why.
+    highpass = onOrOff(v.Highpass, v.HighpassHz);
+    lowpass = onOrOff(v.Lowpass, v.LowpassHz);
+    order = rolloffOrder(v.Rolloff);
+    if highpass > 0 && lowpass > 0 && lowpass <= highpass
+        error('ButterworthFilter:bandstop', 'The low-pass must lie above the high-pass.');
     end
-    semilogx(ax, f, 20 * log10(max(gain, 1e-12)), 'Color', [0.29 0.50 0.79], 'LineWidth', 1.2);
-    hold(ax, 'on');
-    yline(ax, 20 * log10(0.5), ':', 'Color', [0.4 0.4 0.4]);
-    for cutoff = [highpass, lowpass]
-        if cutoff > 0
-            xline(ax, cutoff, ':', sprintf('%g Hz', cutoff), 'Color', [0.4 0.4 0.4], ...
-                'LabelVerticalAlignment', 'bottom', 'FontSize', 8);
-        end
+    f = logspace(log10(0.01), log10(0.999 * srate / 2), 600);
+    gain = ones(size(f));
+    if lowpass > 0
+        [b, a] = Butterworth.design('low', lowpass, order, srate);
+        gain = gain .* abs(freqz(b, a, f, srate)) .^ 2;
     end
-    hold(ax, 'off');
-    xlim(ax, f([1 end]));
-    ylim(ax, [-60 3]);
-    xlabel(ax, 'Hz');
-    ylabel(ax, 'dB');
+    if highpass > 0
+        [b, a] = Butterworth.design('high', highpass, order, srate);
+        gain = gain .* abs(freqz(b, a, f, srate)) .^ 2;
+    end
+    cutoffs = [highpass, lowpass];
 end
 
 function hz = onOrOff(enabled, value)
