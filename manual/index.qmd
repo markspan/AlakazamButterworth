@@ -1,0 +1,176 @@
+---
+title: "Butterworth"
+subtitle: "A plugin for Alakazam: ERPLAB's Butterworth filter"
+lang: en-GB
+bibliography: references.bib
+link-citations: true
+toc: true
+format:
+  html:
+    html-math-method: mathml
+    theme: cosmo
+    fontsize: 1rem
+    linestretch: 1.5
+    fig-cap-location: bottom
+    tbl-cap-location: top
+    anchor-sections: true
+---
+
+*Tools > 1. Preprocessing > Butterworth · continuous, epoched or averaged →
+the same · `ButterworthFilter`*
+
+A high-pass, low-pass or band-pass filter exactly as ERPLAB's `basicfilter`
+applies it [@lopezcalderon2014]: a Butterworth IIR filter whose cutoff is the
+frequency at which the amplitude is halved, run forward and backward so that
+nothing shifts in time. Its presets are the settings Zhang, Garrett and Luck
+[-@zhang2024] recommend for seven ERP components, each for one way of
+scoring the component.
+
+## Why a second filter
+
+Alakazam's own **Filter** is EEGLAB's windowed-sinc FIR, whose roll-off is
+far steeper than a Butterworth filter's. How much a filter distorts an ERP
+depends on its slope as well as on its cutoff, so a recommended cutoff is
+only known to hold for the filter it was found with. Zhang, Garrett and Luck
+found theirs with ERPLAB's Butterworth filter at 12 dB per octave; this
+plugin is that filter, and on data without rejected samples its result
+equals ERPLAB's to within 10^-9^ µV.
+
+![The amplitude response of a 0.1 to 30 Hz band-pass at three roll-offs, as applied: forward and backward, at 500 Hz. Every curve passes half the amplitude at both cutoffs. At 12 dB per octave the two slopes are so wide that they overlap, and the gain never quite reaches 1.](images/response.png){#fig-response}
+
+The dialog draws the same response for the settings chosen, and updates it
+as they change.
+
+## Options
+
+| Option | Default | Meaning |
+|------------------------------|-------------|-------------------------------------------------------|
+| **Recommended for** | Custom | A recommendation of Zhang, Garrett and Luck ([The presets](#sec-presets)), which sets both cutoffs and 12 dB per octave and greys them out; **Custom** to set them yourself. |
+| **High-pass**, **High-pass cutoff (Hz)** | on, 0.1 | Apply a high-pass, with its half-amplitude cutoff. |
+| **Low-pass**, **Low-pass cutoff (Hz)** | on, 30 | Apply a low-pass, with its half-amplitude cutoff. With both on it is a band-pass; the low-pass must then lie above the high-pass. |
+| **Roll-off** | 12 dB per octave | 12, 24, 36 or 48 dB per octave: ERPLAB's filter order 2, 4, 6 or 8 (6 dB per octave per order, counting both passes). |
+| **Remove the DC offset first** | off | Subtract each segment's mean over its first half second before a high-pass, as ERPLAB's option does. |
+| **Channels** | all | The channels to filter. The others are left as they are. |
+
+: The options of **Butterworth**. The dialog opens with the settings of its last run. {#tbl-options}
+
+Filter the continuous recording, before it is epoched: a high-pass needs
+long stretches of data, and an epoch is short. Epoched data and averages can
+be filtered as well, one trial or one bin at a time, as ERPLAB filters them.
+
+## How the filter is applied {#sec-filter}
+
+- **The design.** MATLAB's `butter(order/2, cutoff)`, run forward and
+  backward with `filtfilt`. One pass, of half the order, has a gain of
+  0.71 (−3 dB) at the cutoff; the two passes together square it to 0.5
+  (−6 dB), so the cutoff is where the amplitude is halved, and the phase
+  shifts of the two passes cancel. A band-pass applies the low-pass first
+  and then the high-pass, as ERPLAB does.
+- **Segments.** A continuous recording is filtered between its boundary
+  events, so a filter never runs across a break in the recording. It is cut
+  where ERPLAB cuts it: at the boundary's latency less half a sample,
+  rounded. A segment of no more than three times the order in samples is
+  too short to filter and is left as it is, as ERPLAB leaves it; the record
+  counts them.
+- **Rejected samples.** Alakazam marks a rejected sample `NaN`, which
+  ERPLAB's data never hold. The runs of each channel between rejected
+  samples are filtered separately, so a rejection does not spread through
+  the filter into the samples around it. On data without rejections this
+  changes nothing.
+- **The DC offset.** **Remove the DC offset first** is kept so that a
+  setting copied from ERPLAB means the same here. MATLAB's `filtfilt` starts
+  from a steady state, so in practice it makes no measurable difference.
+
+## The presets {#sec-presets}
+
+**Recommended for** lists Zhang, Garrett and Luck's table for neurotypical
+young adults, one entry per component and score, e.g.
+*N170, mean amplitude: 0.9 to 30 Hz*. A preset sets both cutoffs and
+12 dB per octave, the roll-off the recommendations were found with. A
+recommendation that is a range becomes one number:
+
+| The table says | The preset uses |
+|----------------------------------------|----------------------------|
+| a low-pass of *X* or more, or none | *X* |
+| a low-pass from *X* to *Y* | the middle of the range |
+| a high-pass of *X* or less | *X* |
+| a high-pass of 0.01 or none | 0.01 |
+
+: From a recommended range to a preset. {#tbl-ranges}
+
+Where the table gives a different setting for particular data, that setting
+is a preset of its own: for moderate high-frequency noise, for moderate
+broadband noise where distorted onset and offset times can be tolerated,
+and for avoiding distorted onset and offset times.
+
+| Component | Score | For | High-pass (Hz) | Low-pass (Hz) |
+|------|------------------|-----------------------------|------:|------:|
+| N170 | mean amplitude |  | 0.9 | 30 |
+|  | peak amplitude |  | 0.9 | 30 |
+|  | peak latency |  | 0.9 | 15 |
+|  | 50% area latency |  | 0.9 | 15 |
+| MMN | mean amplitude |  | 0.5 | 20 |
+|  | peak amplitude |  | 0.5 | 20 |
+|  | peak amplitude | moderate high-frequency noise | 0.5 | 30 |
+|  | peak latency |  | 0.5 | 10 |
+|  | peak latency | moderate broadband noise | 0.5 | 5 |
+|  | 50% area latency |  | 0.5 | 20 |
+| N2pc | mean amplitude |  | 0.5 | 20 |
+|  | peak amplitude |  | 0.5 | 30 |
+|  | peak amplitude | moderate high-frequency noise | 0.5 | 20 |
+|  | peak latency |  | 0.01 | 10 |
+|  | 50% area latency |  | 0.01 | 5 |
+|  | 50% area latency | undistorted onset and offset | 0.01 | 10 |
+| P3 | mean amplitude |  | 0.2 | 10 |
+|  | peak amplitude |  | 0.2 | 10 |
+|  | peak latency |  | 0.2 | 10 |
+|  | peak latency | moderate high-frequency noise | 0.2 | 5 |
+|  | 50% area latency |  | 0.2 | 10 |
+|  | 50% area latency | moderate high-frequency noise | 0.2 | 5 |
+| N400 | mean amplitude |  | 0.2 | 10 |
+|  | peak amplitude |  | 0.2 | 10 |
+|  | peak latency |  | 0.2 | 10 |
+|  | peak latency | moderate high-frequency noise | 0.2 | 5 |
+|  | 50% area latency |  | 0.2 | 10 |
+|  | 50% area latency | moderate high-frequency noise | 0.2 | 5 |
+| LRP | mean amplitude |  | 0.3 | 30 |
+|  | peak amplitude |  | 0.3 | 30 |
+|  | peak amplitude | moderate high-frequency noise | 0.3 | 20 |
+|  | peak latency |  | 0.3 | 5 |
+|  | peak latency | undistorted onset and offset | 0.3 | 10 |
+|  | 50% area latency |  | 0.3 | 5 |
+|  | 50% area latency | undistorted onset and offset | 0.3 | 10 |
+| ERN | mean amplitude |  | 0.4 | 20 |
+|  | peak amplitude |  | 0.4 | 20 |
+|  | peak latency |  | 0.4 | 10 |
+|  | 50% area latency |  | 0.4 | 10 |
+
+: The presets, all at 12 dB per octave. {#tbl-presets}
+
+The recommendations hold for recordings like those they were found with:
+neurotypical young adults, in the paradigms of the ERP CORE; for other
+participants or paradigms the best settings may differ. The cutoffs
+a preset sets are stored with the step, so a template replays them even if a
+later version of the plugin changes its table.
+
+## What is recorded
+
+`EEG.etc.alz.butterworth` holds what was done: the high-pass and low-pass
+cutoffs, the order and roll-off, the preset, the channels filtered, how many
+segments were too short to filter, and the plugin's version.
+
+## Installing
+
+In Alakazam, **Install plugins** on the Alakazam tab lists this plugin:
+select it and press **Install**, or give **From a link** the repository,
+<https://github.com/markspan/AlakazamButterworth>. It installs the latest
+release. The filter appears on the Tools tab as
+**Butterworth**, under *1. Preprocessing*.
+
+It needs Alakazam V0.4.5.2 or newer, whose dialogs draw a filter's response,
+and MATLAB's Signal Processing Toolbox (`butter`, `filtfilt`, `freqz`).
+
+## References
+
+::: {#refs}
+:::

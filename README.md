@@ -5,6 +5,11 @@ with a Butterworth IIR filter exactly as ERPLAB's `basicfilter` does, and
 offers the filter settings Zhang, Garrett and Luck (2024) recommend for seven
 ERP components as presets.
 
+## Manual
+
+The manual is on this repository's pages:
+<https://markspan.github.io/AlakazamButterworth/>.
+
 ## Why
 
 Zhang, Garrett and Luck (2024) worked out which high-pass and low-pass
